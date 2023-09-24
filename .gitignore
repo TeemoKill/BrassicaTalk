@@ -1,3 +1,10 @@
+
+# IDE files
+.idea/
+
+# hidden files
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
