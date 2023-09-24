@@ -1,6 +1,7 @@
 import os
 import sys
 
+from pythonosc import udp_client
 import pyperclip as cb
 
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy
@@ -12,7 +13,7 @@ from extra_data import ICON_PATH
 
 try:
     from ctypes import windll  # Only exists on Windows.
-    myappid = 'wanztools.brassicatalk.0.0.1'
+    myappid = 'wanztools.brassicatalk.0.0.2'
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
     pass
@@ -22,31 +23,60 @@ class BrassicaGUI(QWidget):
 
     def __init__(self):
         super().__init__()
+
+        self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
+        self.osc_prefix_input = "/chatbox/input"
+
+        self.init_gui()
+
+    def init_gui(self):
         self.setWindowTitle("Brassica Talk")
         self.setWindowIcon(QIcon(ICON_PATH))
         self.setStyleSheet("background-color: #ffffff")
 
         self.hbox1 = QHBoxLayout()
 
+        self.vbox1 = QVBoxLayout()
+
         self.textBox = QTextEdit(self)
+        self.textBox.setFont(QFont("Arial", 18))
         self.textBox.setMinimumSize(400, 100)
         self.textBox.setAlignment(Qt.AlignTop)
         self.textBox.textChanged.connect(self.on_text_changed)
 
-        self.hbox1.addWidget(self.textBox)
+        self.vbox1.addWidget(self.textBox)
+
+        self.hbox_buttons = QHBoxLayout()
+
+        self.sendButton = QPushButton("SEND!")
+        self.sendButton.setStyleSheet(
+            "background-color: #6adebb;"
+            "border:0px;"
+            "border-radius:40px;"
+            "color: #ffffff;")
+        self.sendButton.setFont(QFont("Consolas", 20, QFont.Bold))
+        self.sendButton.setMinimumSize(160, 120)
+        self.sendButton.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.sendButton.clicked.connect(self.on_push_send_button)
+
+        self.hbox_buttons.addWidget(self.sendButton)
 
         self.clearButton = QPushButton("CLEAR")
         self.clearButton.setStyleSheet(
-            "background-color: #8acdc2;"
+            "background-color: #e69d6a;"
             "border:0px;"
             "border-radius:40px;"
             "color: #ffffff;")
         self.clearButton.setFont(QFont("Consolas", 20, QFont.Bold))
-        self.clearButton.setMinimumSize(160, 90)
+        self.clearButton.setMinimumSize(160, 120)
         self.clearButton.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.clearButton.clicked.connect(self.on_push_clear_button)
 
-        self.hbox1.addWidget(self.clearButton)
+        self.hbox_buttons.addWidget(self.clearButton)
+
+        self.vbox1.addLayout(self.hbox_buttons)
+
+        self.hbox1.addLayout(self.vbox1)
 
         self.setLayout(self.hbox1)
 
@@ -59,6 +89,16 @@ class BrassicaGUI(QWidget):
         last_text = self.textBox.toPlainText()
         self.textBox.setText("")
         cb.copy(last_text)
+        # set focus back to textBox after any button click
+        self.textBox.setFocus()
+
+    def on_push_send_button(self):
+        self.send_content_to_osc(self.textBox.toPlainText())
+        # set focus back to textBox after any button click
+        self.textBox.setFocus()
+
+    def send_content_to_osc(self, content):
+        self.osc_client.send_message(self.osc_prefix_input, [content, True])
 
 
 if __name__ == "__main__":
