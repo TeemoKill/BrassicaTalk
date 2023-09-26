@@ -4,8 +4,8 @@ import sys
 from pythonosc import udp_client
 import pyperclip as cb
 
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMenu, QAction, QHBoxLayout, QVBoxLayout, QSizePolicy
+from PyQt5.QtGui import QIcon, QFont, QCursor
 from PyQt5.QtCore import Qt
 from PyQt5.Qt import QTextEdit
 
@@ -13,7 +13,7 @@ from extra_data import ICON_PATH
 
 try:
     from ctypes import windll  # Only exists on Windows.
-    myappid = 'wanztools.brassicatalk.0.0.2'
+    myappid = 'wanztools.brassicatalk.0.0.3'
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
     pass
@@ -27,12 +27,19 @@ class BrassicaGUI(QWidget):
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         self.osc_prefix_input = "/chatbox/input"
 
+        self.auto_clear = True
+
         self.init_gui()
 
     def init_gui(self):
+        self.setObjectName("window")
         self.setWindowTitle("Brassica Talk")
         self.setWindowIcon(QIcon(ICON_PATH))
-        self.setStyleSheet("background-color: #ffffff")
+        self.setStyleSheet(
+            "#window {"
+            "   background-color: #ffffff;"
+            "}"
+        )
 
         self.hbox1 = QHBoxLayout()
 
@@ -58,6 +65,22 @@ class BrassicaGUI(QWidget):
         self.sendButton.setMinimumSize(160, 120)
         self.sendButton.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.sendButton.clicked.connect(self.on_push_send_button)
+
+        # send button menu
+        self.send_button_menu = QMenu(self)
+        self.send_button_menu.setObjectName("send_button_menu")
+
+        self.send_button_action_auto_clear = QAction("auto clear after send", self, checkable=True)
+        self.send_button_action_auto_clear.setToolTip("auto clear after send")
+        self.send_button_action_auto_clear.setChecked(True)
+        self.send_button_action_auto_clear.triggered.connect(self.toggle_auto_clear)
+
+        self.send_button_menu.addActions([
+            self.send_button_action_auto_clear,
+        ])
+
+        self.sendButton.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.sendButton.customContextMenuRequested.connect(self.on_req_sendbutton_menu)
 
         self.hbox_buttons.addWidget(self.sendButton)
 
@@ -94,7 +117,22 @@ class BrassicaGUI(QWidget):
 
     def on_push_send_button(self):
         self.send_content_to_osc(self.textBox.toPlainText())
+        if self.auto_clear:
+            self.textBox.setText("")
         # set focus back to textBox after any button click
+        self.textBox.setFocus()
+
+    def on_req_sendbutton_menu(self):
+        self.send_button_menu.popup(QCursor.pos())
+
+    def toggle_auto_clear(self, enabled):
+        self.auto_clear = enabled
+        if enabled:
+            self.sendButton.setText("SEND!")
+        else:
+            self.sendButton.setText("SEND")
+
+        # set focus back to textBox
         self.textBox.setFocus()
 
     def send_content_to_osc(self, content):
