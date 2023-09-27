@@ -188,10 +188,6 @@ class BrassicaGUI(QWidget):
     def on_push_talk_button(self):
         with self.speech_listening_lock:
             if self.speech_listening:
-                self.stop_listening(wait_for_stop=True)
-                self.speech_listening = False
-                self.toggle_speech_listening()
-                self.speech_recognized_text.emit("")
                 return
             self.speech_listening = True
             self.toggle_speech_listening()
