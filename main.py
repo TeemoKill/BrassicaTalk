@@ -16,7 +16,7 @@ from extra_data import ICON_PATH
 
 try:
     from ctypes import windll  # Only exists on Windows.
-    myappid = 'wanztools.brassicatalk.0.0.3'
+    myappid = 'wanztools.brassicatalk.0.0.4'
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except ImportError:
     pass
@@ -31,7 +31,9 @@ class BrassicaGUI(QWidget):
         self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
         self.osc_prefix_input = "/chatbox/input"
 
-        self.auto_clear = True
+        self.send_auto_clear = True
+        self.speech_auto_send = True
+        self.talk_button_text = "TALK!"
 
         self.speech_listening = False
         self.speech_listening_lock = threading.Lock()
@@ -61,7 +63,7 @@ class BrassicaGUI(QWidget):
 
         self.vbox1 = QVBoxLayout()
 
-        self.talkButton = QPushButton("⚪ TALK")
+        self.talkButton = QPushButton(self.talk_button_text)
         self.talkButton.setStyleSheet(
             "background-color: #de7f6a;"
             "border:0px;"
@@ -76,10 +78,16 @@ class BrassicaGUI(QWidget):
         self.talk_button_menu = QMenu(self)
         self.talk_button_menu.setObjectName("talk_button_menu")
 
+        self.talk_button_action_auto_send = QAction("send after talk", self, checkable=True)
+        self.talk_button_action_auto_send.setChecked(True)
+        self.talk_button_action_auto_send.triggered.connect(self.toggle_speech_auto_send)
+
         # self.talk_button_device_list = QListWidget()
         # self.talk_button_device_list.currentItemChanged.connect(self.on_talkbutton_device_changed)
         #
-        # self.talk_button_menu.addActions([self.talk_button_device_list])
+        self.talk_button_menu.addActions([
+            self.talk_button_action_auto_send,
+        ])
 
         self.talkButton.setContextMenuPolicy(Qt.CustomContextMenu)
         self.talkButton.customContextMenuRequested.connect(self.on_req_talkbutton_menu)
@@ -113,8 +121,7 @@ class BrassicaGUI(QWidget):
         self.send_button_menu = QMenu(self)
         self.send_button_menu.setObjectName("send_button_menu")
 
-        self.send_button_action_auto_clear = QAction("auto clear after send", self, checkable=True)
-        self.send_button_action_auto_clear.setToolTip("auto clear after send")
+        self.send_button_action_auto_clear = QAction("clear after send", self, checkable=True)
         self.send_button_action_auto_clear.setChecked(True)
         self.send_button_action_auto_clear.triggered.connect(self.toggle_auto_clear)
 
@@ -156,6 +163,8 @@ class BrassicaGUI(QWidget):
         with self.speech_listening_lock:
             self.speech_listening = False
             self.toggle_speech_listening()
+        if self.speech_auto_send:
+            self.send_content_to_osc()
 
     def on_push_clear_button(self):
         last_text = self.textBox.toPlainText()
@@ -166,6 +175,9 @@ class BrassicaGUI(QWidget):
 
     def on_push_send_button(self):
         self.send_content_to_osc()
+        if self.send_auto_clear:
+            self.textBox.setText("")
+
         # set focus back to textBox after any button click
         self.textBox.setFocus()
 
@@ -219,16 +231,29 @@ class BrassicaGUI(QWidget):
     def on_talkbutton_device_changed(self):
         pass
 
+    def toggle_speech_auto_send(self, auto_send):
+        self.speech_auto_send = auto_send
+        if auto_send:
+            self.talk_button_text = "TALK!"
+        else:
+            self.talk_button_text = "TALK"
+        self.talk_button_sync_text()
+
+        self.textBox.setFocus()
+
+    def talk_button_sync_text(self):
+        self.talkButton.setText(self.talk_button_text)
+
     def toggle_speech_listening(self):
         if self.speech_listening:
-            self.talkButton.setText("LISTENING..")
+            self.talkButton.setText("⚪REC..")
         else:
-            self.talkButton.setText("⚪ TALK")
+            self.talk_button_sync_text()
 
         self.textBox.setFocus()
 
     def toggle_auto_clear(self, enabled):
-        self.auto_clear = enabled
+        self.send_auto_clear = enabled
         if enabled:
             self.sendButton.setText("SEND!")
         else:
@@ -240,8 +265,8 @@ class BrassicaGUI(QWidget):
     def send_content_to_osc(self):
         content = self.textBox.toPlainText()
         self.osc_client.send_message(self.osc_prefix_input, [content, True])
-        if self.auto_clear:
-            self.textBox.setText("")
+        print(f"[send_content_to_osc] message sent: {content}")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
