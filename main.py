@@ -45,6 +45,19 @@ class BrassicaGUI(QWidget):
 
         self.vbox1 = QVBoxLayout()
 
+        self.talkButton = QPushButton("⚪ TALK")
+        self.talkButton.setStyleSheet(
+            "background-color: #de7f6a;"
+            "border:0px;"
+            "border-radius:40px;"
+            "color: #ffffff;")
+        self.talkButton.setFont(QFont("Consolas", 20, QFont.Bold))
+        self.talkButton.setMinimumSize(160, 80)
+        self.talkButton.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.talkButton.clicked.connect(self.on_push_talk_button)
+
+        self.vbox1.addWidget(self.talkButton)
+
         self.textBox = QTextEdit(self)
         self.textBox.setFont(QFont("Arial", 18))
         self.textBox.setMinimumSize(400, 100)
@@ -124,6 +137,9 @@ class BrassicaGUI(QWidget):
 
     def on_req_sendbutton_menu(self):
         self.send_button_menu.popup(QCursor.pos())
+
+    def on_push_talk_button(self):
+        self.textBox.setFocus()
 
     def toggle_auto_clear(self, enabled):
         self.auto_clear = enabled
